@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Playwright generated output
+playwright-report/
+test-results/
+blob-report/
+
+# Playwright MCP tool artifacts
+.playwright-mcp/
+
+# Debug screenshots (captured during development)
+*.png
+*.jpeg
+*.jpg
+
+# Environment files — commit .env.example instead, never the real ones
+.env.dev
+.env.staging
+.env.prod
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript build output
+dist/

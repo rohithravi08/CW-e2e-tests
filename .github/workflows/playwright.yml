@@ -1,0 +1,99 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests against'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - staging
+          - dev
+      tag:
+        description: 'Test tag to run'
+        required: true
+        default: '@smoke'
+        type: choice
+        options:
+          - '@smoke'
+          - '@regression'
+          - '@ui'
+          - '@api'
+
+jobs:
+  api-tests:
+    name: API Tests
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'prod' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run API tests
+        run: npx playwright test --project=api-web --grep "${{ github.event.inputs.tag || '@smoke' }}"
+        env:
+          TEST_ENV: ${{ github.event.inputs.environment || 'prod' }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+
+      - name: Upload API test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-api
+          path: playwright-report/
+          retention-days: 30
+
+  e2e-tests:
+    name: E2E Tests (${{ matrix.project }})
+    needs: api-tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'prod' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.project }}
+
+      - name: Run E2E tests
+        run: npx playwright test --project=${{ matrix.project }} --workers=1 --grep "${{ github.event.inputs.tag || '@smoke' }}"
+        env:
+          TEST_ENV: ${{ github.event.inputs.environment || 'prod' }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+
+      - name: Upload E2E report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: playwright-report/
+          retention-days: 30
