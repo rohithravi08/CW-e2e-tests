@@ -2,6 +2,8 @@
 
 End-to-end and API test suite for [Catawiki](https://www.catawiki.com), built with [Playwright](https://playwright.dev) and TypeScript.
 
+> All test scenarios documented in BDD format: [TEST_CASES.md](./TEST_CASES.md)
+
 ---
 
 ## Tech Stack
