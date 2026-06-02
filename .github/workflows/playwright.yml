@@ -30,6 +30,7 @@ on:
 jobs:
   api-tests:
     name: API Tests
+    if: github.event.inputs.tag != '@ui'
     timeout-minutes: 15
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'prod' }}
@@ -61,7 +62,7 @@ jobs:
 
   e2e-tests:
     name: E2E Tests (${{ matrix.project }})
-    needs: api-tests
+    if: github.event.inputs.tag != '@api'
     timeout-minutes: 60
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'prod' }}
