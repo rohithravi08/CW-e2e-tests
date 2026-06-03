@@ -65,14 +65,8 @@ The default environment is **prod**. To override, prefix commands with `TEST_ENV
 ### By tag (recommended)
 
 ```bash
-# Smoke tests only — fast critical path (~15s)
+# Smoke tests — fast critical path
 npm run test:smoke
-
-# Smoke UI tests in headed browser
-npm run test:smoke:ui
-
-# Smoke API tests only
-npm run test:smoke:api
 
 # Full regression suite
 npm run test:regression
@@ -88,24 +82,24 @@ npm run test:e2e
 npm run test:api
 ```
 
-### By spec file
-
-```bash
-npm run test:e2e:search     # Search tests
-npm run test:e2e:lot        # Lot page tests
-npm run test:e2e:nav        # Navigation tests
-
-npm run test:api:collections  # Collections API
-npm run test:api:lot-nav      # Lot navigation API
-npm run test:api:lot-bids     # Lot bids API
-```
-
 ### By environment
 
 ```bash
 npm run test:dev        # Run against dev
 npm run test:staging    # Run against staging
 npm run test:prod       # Run against prod (default)
+```
+
+### By spec file
+
+```bash
+# Run a single spec directly
+npx playwright test tests/e2e/search.spec.ts
+npx playwright test tests/api/collections-api.spec.ts
+
+# Filter by tag within a single layer
+npx playwright test --project=chromium --grep @smoke
+npx playwright test --project=api-web --grep @smoke
 ```
 
 ### View HTML report
@@ -137,7 +131,7 @@ npx playwright test --grep "@regression and @ui"
 
 ## Test Coverage
 
-### E2E (6 tests across 3 browsers)
+### E2E (6 tests — Firefox in CI, Chromium locally)
 
 | File | Tests | Tags |
 |------|-------|------|
@@ -160,27 +154,38 @@ npx playwright test --grep "@regression and @ui"
 
 ## CI / GitHub Actions
 
-The pipeline runs on every push/PR to `main` or `develop`, and can be triggered manually via **Actions → Run workflow** with an environment choice (dev / staging / prod).
+The pipeline runs on every push/PR to `main`, and can be triggered manually via **Actions → Run workflow** with an environment and tag choice.
 
-### Pipeline order
+### Pipeline
+
+Both jobs run in **parallel** — a failure in one does not block the other.
 
 ```
-API Tests  ──► E2E Tests (Chromium)
-           ──► E2E Tests (Firefox)   [parallel]
-           ──► E2E Tests (WebKit)
+API Tests (api-web)  ──┐
+                       ├── run independently
+E2E Tests (Firefox)  ──┘
 ```
 
-API tests run first as a gate. E2E tests only start if API tests pass.
+Tag-based job skipping:
 
-### Required secret
+| Tag selected | API Tests | E2E Tests |
+|---|---|---|
+| `@smoke` | ✅ runs | ✅ runs |
+| `@regression` | ✅ runs | ✅ runs |
+| `@api` | ✅ runs | ⏭ skipped |
+| `@ui` | ⏭ skipped | ✅ runs |
+
+### Required secrets
 
 | Secret | Description |
 |--------|-------------|
-| `BASE_URL` | Target environment URL (set per GitHub Environment) |
+| `BASE_URL` | Target environment URL |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook for test result notifications |
 
-### Reports
+### Reports & Notifications
 
-HTML reports are uploaded as artifacts after each run and retained for 30 days. Download from the **Actions** tab of the relevant workflow run.
+- **HTML reports** are uploaded as artifacts after each run and retained for 30 days. Download from the **Actions** tab of the relevant workflow run.
+- **Slack notifications** are sent after every job (pass or fail) with status, environment, tag, branch and test counts.
 
 ---
 
@@ -194,3 +199,4 @@ Key settings in `playwright.config.ts`:
 | `trace` | `on-first-retry` | Traces captured on retry for debugging |
 | `screenshot` | `only-on-failure` | Screenshots captured on test failure |
 | `fullyParallel` | `true` | Tests within a file run in parallel |
+| `reporter` | html + json | HTML for browsing; JSON powers Slack test counts |
